@@ -12,14 +12,14 @@ export default defineConfig({
     root: path.resolve(__dirname, 'src'),
     server: {
         hot: true,
-        host: 'localhost',
-        port: '8080'
-        // host: 'ripples.localhost.direct',
-        // port: 4443,
-        // https: {
-        //     key: fs.readFileSync('./localhost.direct/localhost.direct.key'),
-        //     cert: fs.readFileSync('./localhost.direct/localhost.direct.crt'),
-        // },
+        // host: 'localhost',
+        // port: '8080'
+        host: 'ripples.localhost.direct',
+        port: 4443,
+        https: {
+            key: fs.readFileSync('./localhost.direct/localhost.direct.key'),
+            cert: fs.readFileSync('./localhost.direct/localhost.direct.crt'),
+        },
 
     },
     plugins: [vue()],

@@ -3,21 +3,30 @@ const address = "wss://home.buzl.uk:443/ws?"
 // const address = "ws://localhost:3000/ws?"
 const config = {
     iceServers: [
-        { urls: ['stun:stun.l.google.com:19302'] }
-    ],
-    sdpSemantics: 'unified-plan'
+        {
+            urls: "turn:standard.relay.metered.ca:80",
+            username: "90e794d7186335533be6a215",
+            credential: "05ker3YuARTJkdfP",
+        },
+        {
+            urls: "turn:standard.relay.metered.ca:443",
+            username: "90e794d7186335533be6a215",
+            credential: "05ker3YuARTJkdfP",
+        },
+    ]
 }
 
 class Peer {
     constructor(id, token) {
-        this.id = id;
+        this.src = id;
+        this.dst = null;
         this.token = token;
         this.makingOffer = false;
 
         // Connections
         this.socket = new WebSocket(address + new URLSearchParams({
             key: 'ripples',
-            id: this.id,
+            id: this.src,
             token: this.token
         }));
         this.pc = new RTCPeerConnection(config);
@@ -34,27 +43,24 @@ class Peer {
     setRTCListeners() {
         // WebRTC
         this.pc.onnegotiationneeded = async () => {
-            try {
-                this.makingOffer = true;
-                await this.pc.setLocalDescription();
-                // send through socket
-                // console.log({
-                //     description: this.pc.localDescription
-                // })
-            }
-            catch (err) {
-                console.error(err);
-            }
-            finally {
-                this.makingOffer = false;
-            }
+            await this.pc.setLocalDescription();
         }
 
         this.pc.onicecandidate = ({ candidate }) => {
+            // Check for validity
+            if (!this.dst || !candidate || !candidate.candidate.length) return;
+
             // send through socket
-            // console.log({
-            //     candidate: candidate
-            // })
+            this.socket.send(JSON.stringify({
+                src: this.src,
+                dst: this.dst,
+                type: 'candidate',
+                data: candidate
+            }))
+        }
+
+        this.pc.onclose = () => {
+            console.log('Peer connection closed.');
         }
 
         // DataChannel
@@ -97,14 +103,17 @@ class Peer {
     }
 
     connect(dst) {
+        // Set destination
+        this.dst = dst;
+
         // Negotiation
         this.pc.createOffer()
             .then((offer) => this.pc.setLocalDescription(offer))
             .then(() => {
                 // Send through websocket
                 this.socket.send(JSON.stringify({
-                    src: this.id,
-                    dst: dst,
+                    src: this.src,
+                    dst: this.dst,
                     type: this.pc.localDescription.type,
                     sdp: this.pc.localDescription.sdp,
                 }))
