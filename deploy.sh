@@ -1,6 +1,5 @@
 #!/usr/bin/zsh
 set -e
-cd client
 rm -rf src/dist
 npm run build
 cd src/dist
