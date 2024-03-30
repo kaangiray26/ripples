@@ -3,6 +3,7 @@ const address = "wss://home.buzl.uk:443/ws?"
 // const address = "ws://localhost:3000/ws?"
 const config = {
     iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
         {
             urls: "turn:standard.relay.metered.ca:80",
             username: "90e794d7186335533be6a215",
@@ -13,7 +14,8 @@ const config = {
             username: "90e794d7186335533be6a215",
             credential: "05ker3YuARTJkdfP",
         },
-    ]
+    ],
+    sdpSemantics: "unified-plan",
 }
 
 class Peer {
@@ -85,9 +87,10 @@ class Peer {
     setSocketListeners() {
         this.socket.onmessage = async (event) => {
             const message = JSON.parse(event.data);
+            console.log("Socket:", message);
 
             if (message.type == 'answer') {
-                this.pc.setRemoteDescription(message.data);
+                await this.pc.setRemoteDescription(message.data);
             }
         }
 
