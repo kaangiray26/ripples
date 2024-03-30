@@ -21,7 +21,6 @@ class Peer {
         this.src = id;
         this.dst = null;
         this.token = token;
-        this.makingOffer = false;
 
         // Connections
         this.socket = new WebSocket(address + new URLSearchParams({
@@ -32,12 +31,16 @@ class Peer {
         this.pc = new RTCPeerConnection(config);
         this.datachannel = this.pc.createDataChannel("chat");
 
+        // Candidates
+        this.candidates = [];
+
         // Set event listeners
         this.setRTCListeners();
         this.setSocketListeners();
 
         // Callbacks
-        this.onconnection = null;
+        this.onconnected = null;
+        this.onicegatheringcomplete = null;
     }
 
     setRTCListeners() {
@@ -46,27 +49,28 @@ class Peer {
             await this.pc.setLocalDescription();
         }
 
-        this.pc.onicecandidate = ({ candidate }) => {
-            // Check for validity
-            if (!this.dst || !candidate || !candidate.candidate.length) return;
-
-            // send through socket
-            this.socket.send(JSON.stringify({
-                src: this.src,
-                dst: this.dst,
-                type: 'candidate',
-                data: candidate
-            }))
-        }
-
         this.pc.onclose = () => {
             console.log('Peer connection closed.');
+        }
+
+        // ICE Candidates
+        this.pc.onicecandidate = ({ candidate }) => {
+            // Check for validity
+            if (candidate == null) {
+                console.log("ICE Candidates:", this.pc.iceGatheringState)
+                this.pc.onicecandidate = () => { };
+                if (this.onicegatheringcomplete) this.onicegatheringcomplete();
+                return
+            }
+
+            // Store candidates
+            this.candidates.push(candidate);
         }
 
         // DataChannel
         this.datachannel.onopen = (event) => {
             console.log('Data channel opened.', event);
-            this.onconnection();
+            this.onconnected();
         }
 
         this.datachannel.onclose = (event) => {
@@ -106,10 +110,42 @@ class Peer {
         // Set destination
         this.dst = dst;
 
+        // Wait for iceGatheringState to complete
+        if (this.pc.iceGatheringState != "complete") {
+            this.onicegatheringcomplete = () => {
+                this.onicegatheringcomplete = null;
+                this.sendOffer();
+            }
+            return
+        }
+
         // Negotiation
+        this.sendOffer();
+    }
+
+    sendOffer() {
+        // Send candidates
+        // this.socket.send(JSON.stringify({
+        //     src: this.src,
+        //     dst: this.dst,
+        //     type: 'candidate',
+        //     data: candidate
+        // }))
+
+        // this.socket.send(JSON.stringify({
+        //     src: this.src,
+        //     dst: this.dst,
+        //     type: 'candidates',
+        //     candidates: this.candidates
+        // }))
+
+        // Send offer
         this.pc.createOffer()
-            .then((offer) => this.pc.setLocalDescription(offer))
+            .then((offer) => {
+                this.pc.setLocalDescription(offer)
+            })
             .then(() => {
+                console.log('Sending offer:', this.pc.localDescription);
                 // Send through websocket
                 this.socket.send(JSON.stringify({
                     src: this.src,
