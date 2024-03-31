@@ -37,3 +37,39 @@ body {
     outline: unset !important;
     box-shadow: unset !important;
 }
+
+ul {
+    padding: unset;
+}
+
+li::marker {
+    content: "";
+}
+
+.ice-server {
+    border: 1px solid var(--bs-dark);
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 0.375rem;
+}
+
+.overlay {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+.overlay-container {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bs-light);
+    padding: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 0.375rem;
+    box-shadow: 0 0 1rem 0.25rem rgba(0, 0, 0, 0.15);
+}

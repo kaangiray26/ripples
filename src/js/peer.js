@@ -1,26 +1,27 @@
 // Peer config
-const address = "wss://home.buzl.uk:443/ws?"
-// const address = "ws://localhost:3000/ws?"
-const config = {
+const address = "wss://home.buzl.uk:8443/ws?"
+const defaultConfig = {
     iceServers: [
         {
             urls: "stun:stun.relay.metered.ca:80",
         },
         {
-            urls: "turn:global.relay.metered.ca:443?transport=tcp",
-            username: "b80235ff6eb67287e729cec5",
-            credential: "RthayAEFoEP3+JZ8",
-        },
+            urls: "turn:home.buzl.uk:443?transport=tcp",
+            username: "test",
+            credential: "test123",
+        }
     ],
     sdpSemantics: "unified-plan",
     iceCandidatePoolSize: 1
 }
 
 class Peer {
-    constructor(id, token) {
+    constructor(id, token, config) {
         this.src = id;
         this.dst = null;
         this.token = token;
+
+        console.log("Using config:", config);
 
         // Connections
         this.socket = new WebSocket(address + new URLSearchParams({
@@ -39,14 +40,19 @@ class Peer {
         this.setSocketListeners();
 
         // Callbacks
-        this.onconnected = null;
-        this.onicegatheringcomplete = null;
+        this.onconnected = () => { };
+        this.onicegatheringcomplete = () => { };
+        this.onicegatheringcompleted = () => { };
     }
 
     setRTCListeners() {
         // WebRTC
         this.pc.onnegotiationneeded = async () => {
             await this.pc.setLocalDescription();
+        }
+
+        this.pc.onconnectionstatechange = () => {
+            console.log('Connection state changed:', this.pc.connectionState);
         }
 
         this.pc.onclose = () => {
@@ -60,12 +66,17 @@ class Peer {
                 console.log("ICE gathering complete.")
                 console.log("ICE Candidates:", this.pc.iceGatheringState, this.candidates)
                 this.pc.onicecandidate = () => { };
+                this.onicegatheringcompleted();
                 if (this.onicegatheringcomplete) this.onicegatheringcomplete();
                 return
             }
 
             // Store candidates
             this.candidates.push(candidate);
+        }
+
+        this.pc.oniceconnectionstatechange = () => {
+            console.log('ICE connection state changed:', this.pc.iceConnectionState);
         }
 
         this.pc.onicecandidateerror = (event) => {
@@ -96,6 +107,7 @@ class Peer {
                 console.log("Setting answer...");
                 this.pc.setRemoteDescription(message.payload).then(() => {
                     console.log('Answer set:', message.payload);
+                    console.log(this.datachannel);
                 })
             }
         }
@@ -133,16 +145,6 @@ class Peer {
     }
 
     sendOffer() {
-        // Send candidates
-        // this.candidates.map(candidate => {
-        //     this.socket.send(JSON.stringify({
-        //         src: this.src,
-        //         dst: this.dst,
-        //         type: 'candidate',
-        //         payload: candidate
-        //     }))
-        // })
-
         // Send offer
         this.pc.createOffer()
             .then((offer) => {
@@ -165,4 +167,4 @@ class Peer {
     }
 }
 
-export { Peer };
+export { Peer, defaultConfig };
