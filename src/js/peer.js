@@ -3,19 +3,17 @@ const address = "wss://home.buzl.uk:443/ws?"
 // const address = "ws://localhost:3000/ws?"
 const config = {
     iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
         {
-            urls: "turn:standard.relay.metered.ca:80",
-            username: "90e794d7186335533be6a215",
-            credential: "05ker3YuARTJkdfP",
+            urls: "stun:stun.relay.metered.ca:80",
         },
         {
-            urls: "turn:standard.relay.metered.ca:443",
-            username: "90e794d7186335533be6a215",
-            credential: "05ker3YuARTJkdfP",
+            urls: "turn:global.relay.metered.ca:443?transport=tcp",
+            username: "b80235ff6eb67287e729cec5",
+            credential: "RthayAEFoEP3+JZ8",
         },
     ],
     sdpSemantics: "unified-plan",
+    iceCandidatePoolSize: 1
 }
 
 class Peer {
@@ -59,7 +57,8 @@ class Peer {
         this.pc.onicecandidate = ({ candidate }) => {
             // Check for validity
             if (candidate == null) {
-                console.log("ICE Candidates:", this.pc.iceGatheringState)
+                console.log("ICE gathering complete.")
+                console.log("ICE Candidates:", this.pc.iceGatheringState, this.candidates)
                 this.pc.onicecandidate = () => { };
                 if (this.onicegatheringcomplete) this.onicegatheringcomplete();
                 return
@@ -67,6 +66,10 @@ class Peer {
 
             // Store candidates
             this.candidates.push(candidate);
+        }
+
+        this.pc.onicecandidateerror = (event) => {
+            console.error('ICE candidate error:', event);
         }
 
         // DataChannel
@@ -90,7 +93,10 @@ class Peer {
             console.log("Socket:", message);
 
             if (message.type == 'answer') {
-                await this.pc.setRemoteDescription(message.data);
+                console.log("Setting answer...");
+                this.pc.setRemoteDescription(message.payload).then(() => {
+                    console.log('Answer set:', message.payload);
+                })
             }
         }
 
@@ -128,19 +134,14 @@ class Peer {
 
     sendOffer() {
         // Send candidates
-        // this.socket.send(JSON.stringify({
-        //     src: this.src,
-        //     dst: this.dst,
-        //     type: 'candidate',
-        //     data: candidate
-        // }))
-
-        // this.socket.send(JSON.stringify({
-        //     src: this.src,
-        //     dst: this.dst,
-        //     type: 'candidates',
-        //     candidates: this.candidates
-        // }))
+        // this.candidates.map(candidate => {
+        //     this.socket.send(JSON.stringify({
+        //         src: this.src,
+        //         dst: this.dst,
+        //         type: 'candidate',
+        //         payload: candidate
+        //     }))
+        // })
 
         // Send offer
         this.pc.createOffer()
